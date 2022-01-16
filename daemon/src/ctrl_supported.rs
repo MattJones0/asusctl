@@ -1,8 +1,9 @@
 use log::warn;
 use serde_derive::{Deserialize, Serialize};
+use zbus::blocking::Connection;
 use zbus::dbus_interface;
 use zvariant::ObjectPath;
-use zvariant_derive::Type;
+use zvariant::Type;
 
 use crate::{
     ctrl_anime::CtrlAnime, ctrl_aura::controller::CtrlKbdLed, ctrl_charge::CtrlCharge,
@@ -31,8 +32,9 @@ impl SupportedFunctions {
 }
 
 impl crate::ZbusAdd for SupportedFunctions {
-    fn add_to_server(self, server: &mut zbus::ObjectServer) {
+    fn add_to_server(self, server: &mut Connection) {
         server
+        .object_server()
             .at(
                 &ObjectPath::from_str_unchecked("/org/asuslinux/Supported"),
                 self,

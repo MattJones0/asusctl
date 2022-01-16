@@ -19,9 +19,8 @@
 //!
 //! …consequently `zbus-xmlgen` did not generate code for the above interfaces.
 
-use std::sync::mpsc::Sender;
-
-use zbus::{dbus_proxy, Connection, Result};
+use zbus_macros::dbus_proxy;
+use zbus::{blocking::Connection, Result};
 
 #[dbus_proxy(
     interface = "org.asuslinux.Daemon",
@@ -49,16 +48,16 @@ trait Daemon {
     fn notify_post_boot_sound(&self, dedicated: bool) -> zbus::Result<()>;
 }
 
-pub struct RogBiosProxy<'a>(DaemonProxy<'a>);
+pub struct RogBiosProxy<'a>(DaemonProxyBlocking<'a>);
 
 impl<'a> RogBiosProxy<'a> {
     #[inline]
     pub fn new(conn: &Connection) -> Result<Self> {
-        Ok(RogBiosProxy(DaemonProxy::new(conn)?))
+        Ok(RogBiosProxy(DaemonProxyBlocking::new(conn)?))
     }
 
     #[inline]
-    pub fn proxy(&self) -> &DaemonProxy<'a> {
+    pub fn proxy(&self) -> &DaemonProxyBlocking<'a> {
         &self.0
     }
 
@@ -82,24 +81,24 @@ impl<'a> RogBiosProxy<'a> {
         self.0.set_post_boot_sound(on)
     }
 
-    #[inline]
-    pub fn connect_notify_dedicated_graphic_mode(
-        &self,
-        send: Sender<bool>,
-    ) -> zbus::fdo::Result<()> {
-        self.0.connect_notify_dedicated_graphic_mode(move |data| {
-            send.send(data)
-                .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
-            Ok(())
-        })
-    }
+    // #[inline]
+    // pub fn connect_notify_dedicated_graphic_mode(
+    //     &self,
+    //     send: Sender<bool>,
+    // ) -> zbus::fdo::Result<()> {
+    //     self.0.connect_notify_dedicated_graphic_mode(move |data| {
+    //         send.send(data)
+    //             .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
+    //         Ok(())
+    //     })
+    // }
 
-    #[inline]
-    pub fn connect_notify_post_boot_sound(&self, send: Sender<bool>) -> zbus::fdo::Result<()> {
-        self.0.connect_notify_post_boot_sound(move |data| {
-            send.send(data)
-                .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
-            Ok(())
-        })
-    }
+    // #[inline]
+    // pub fn connect_notify_post_boot_sound(&self, send: Sender<bool>) -> zbus::fdo::Result<()> {
+    //     self.0.connect_notify_post_boot_sound(move |data| {
+    //         send.send(data)
+    //             .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
+    //         Ok(())
+    //     })
+    // }
 }

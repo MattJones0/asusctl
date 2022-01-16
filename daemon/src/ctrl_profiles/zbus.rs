@@ -2,11 +2,16 @@ use log::warn;
 use rog_profiles::fan_curve_set::CurveData;
 use rog_profiles::fan_curve_set::FanCurveSet;
 use rog_profiles::Profile;
+use zbus::SignalContext;
+use zbus::blocking::Connection;
 
 use std::sync::Arc;
 use std::sync::Mutex;
 use zbus::{dbus_interface, fdo::Error};
 use zvariant::ObjectPath;
+
+use crate::CtrlTask;
+use crate::error::RogError;
 
 use super::controller::CtrlPlatformProfile;
 
@@ -161,21 +166,22 @@ impl ProfileZbus {
     }
 
     #[dbus_interface(signal)]
-    fn notify_profile(&self, profile: &Profile) -> zbus::Result<()> {}
+    async fn notify_profile(signal_ctxt: &SignalContext<'_>, profile: &Profile) -> zbus::Result<()> {}
 }
 
 impl ProfileZbus {
     fn do_notification(&self) {
-        if let Ok(ctrl) = self.inner.try_lock() {
-            self.notify_profile(&ctrl.config.active_profile)
-                .unwrap_or_else(|err| warn!("{}", err));
+        if let Ok(_ctrl) = self.inner.try_lock() {
+            // self.notify_profile(&ctrl.config.active_profile)
+            //     .unwrap_or_else(|err| warn!("{}", err));
         }
     }
 }
 
 impl crate::ZbusAdd for ProfileZbus {
-    fn add_to_server(self, server: &mut zbus::ObjectServer) {
+    fn add_to_server(self, server: &mut Connection) {
         server
+        .object_server()
             .at(
                 &ObjectPath::from_str_unchecked("/org/asuslinux/Profile"),
                 self,
@@ -185,5 +191,19 @@ impl crate::ZbusAdd for ProfileZbus {
                 err
             })
             .ok();
+    }
+}
+
+impl CtrlTask for ProfileZbus {
+    fn do_task(&self) -> Result<(), RogError> {
+        if let Ok(ref mut lock) = self.inner.try_lock() {
+            let new_profile = Profile::get_active_profile().unwrap();
+            if new_profile != lock.config.active_profile {
+                lock.config.active_profile = new_profile;
+                lock.write_profile_curve_to_platform()?;
+                lock.save_config();
+            }
+        }
+        Ok(())
     }
 }

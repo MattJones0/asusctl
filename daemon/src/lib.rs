@@ -31,7 +31,7 @@ pub mod error;
 
 use crate::error::RogError;
 use config::Config;
-use zbus::ObjectServer;
+use zbus::{blocking::{Connection}};
 
 pub static VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -40,7 +40,7 @@ pub trait Reloadable {
 }
 
 pub trait ZbusAdd {
-    fn add_to_server(self, server: &mut ObjectServer);
+    fn add_to_server(self, server: &mut Connection);
 }
 
 pub trait CtrlTask {

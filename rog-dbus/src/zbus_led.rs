@@ -19,9 +19,8 @@
 //!
 //! …consequently `zbus-xmlgen` did not generate code for the above interfaces.
 
-use std::sync::mpsc::Sender;
-
-use zbus::{dbus_proxy, Connection, Result};
+use zbus_macros::dbus_proxy;
+use zbus::{blocking::Connection, Result};
 
 use rog_aura::{AuraEffect, KeyColourArray, LedBrightness, LedPowerStates};
 
@@ -82,16 +81,16 @@ trait Daemon {
     fn sleep_enabled(&self) -> zbus::Result<bool>;
 }
 
-pub struct LedProxy<'a>(DaemonProxy<'a>);
+pub struct LedProxy<'a>(DaemonProxyBlocking<'a>);
 
 impl<'a> LedProxy<'a> {
     #[inline]
     pub fn new(conn: &Connection) -> Result<Self> {
-        Ok(LedProxy(DaemonProxy::new(conn)?))
+        Ok(LedProxy(DaemonProxyBlocking::new(conn)?))
     }
 
     #[inline]
-    pub fn proxy(&self) -> &DaemonProxy<'a> {
+    pub fn proxy(&self) -> &DaemonProxyBlocking<'a> {
         &self.0
     }
 
@@ -187,24 +186,24 @@ impl<'a> LedProxy<'a> {
         Ok(())
     }
 
-    #[inline]
-    pub fn connect_notify_led(&self, send: Sender<AuraEffect>) -> zbus::fdo::Result<()> {
-        self.0.connect_notify_led(move |data| {
-            send.send(data)
-                .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
-            Ok(())
-        })
-    }
+    // #[inline]
+    // pub fn connect_notify_led(&self, send: Sender<AuraEffect>) -> zbus::fdo::Result<()> {
+    //     self.0.connect_notify_led(move |data| {
+    //         send.send(data)
+    //             .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
+    //         Ok(())
+    //     })
+    // }
 
-    #[inline]
-    pub fn connect_notify_power_states(
-        &self,
-        send: Sender<LedPowerStates>,
-    ) -> zbus::fdo::Result<()> {
-        self.0.connect_notify_power_states(move |data| {
-            send.send(data)
-                .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
-            Ok(())
-        })
-    }
+    // #[inline]
+    // pub fn connect_notify_power_states(
+    //     &self,
+    //     send: Sender<LedPowerStates>,
+    // ) -> zbus::fdo::Result<()> {
+    //     self.0.connect_notify_power_states(move |data| {
+    //         send.send(data)
+    //             .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
+    //         Ok(())
+    //     })
+    // }
 }

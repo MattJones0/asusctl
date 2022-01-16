@@ -350,16 +350,16 @@ impl CtrlAnime<'static> {
         Err(zbus::fdo::Error::Failed("UserConfig lock fail".into()))
     }
 
-    pub fn set_state(&mut self, on: bool) -> zbus::fdo::Result<()> {
+    pub fn set_state(&mut self, on: bool) -> zbus::Result<()> {
         // Operations here need to be in specific order
         if on {
-            self.client.proxies().anime().set_on_off(on)?;
+            self.client.proxies().anime().set_on_off(on).ok();
             // Let the inner loop run
             self.inner_early_return.store(false, Ordering::SeqCst);
         } else {
             // Must make the inner run loop return early
             self.inner_early_return.store(true, Ordering::SeqCst);
-            self.client.proxies().anime().set_on_off(on)?;
+            self.client.proxies().anime().set_on_off(on).ok();
         }
         Ok(())
     }

@@ -1,6 +1,7 @@
 use crate::{config::Config, error::RogError, GetSupported};
 use log::{error, info, warn};
 use rog_supported::RogBiosSupportedFunctions;
+use zbus::blocking::{Connection};
 use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::{Read, Write};
@@ -8,7 +9,7 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 use std::sync::Mutex;
-use zbus::dbus_interface;
+use zbus::{dbus_interface, SignalContext};
 use zvariant::ObjectPath;
 
 const INITRAMFS_PATH: &str = "/usr/sbin/update-initramfs";
@@ -43,12 +44,12 @@ impl CtrlRogBios {
                 err
             })
             .ok();
-        self.notify_dedicated_graphic_mode(dedicated)
-            .map_err(|err| {
-                warn!("CtrlRogBios: notify_asus_switch_graphic_mode {}", err);
-                err
-            })
-            .ok();
+        // TODO: self.notify_dedicated_graphic_mode(dedicated)
+        //     .map_err(|err| {
+        //         warn!("CtrlRogBios: notify_asus_switch_graphic_mode {}", err);
+        //         err
+        //     })
+        //     .ok();
     }
 
     pub fn dedicated_graphic_mode(&self) -> i8 {
@@ -61,7 +62,7 @@ impl CtrlRogBios {
     }
 
     #[dbus_interface(signal)]
-    pub fn notify_dedicated_graphic_mode(&self, dedicated: bool) -> zbus::Result<()> {}
+    async fn notify_dedicated_graphic_mode(signal_ctxt: &SignalContext<'_>, dedicated: bool) -> zbus::Result<()> {}
 
     pub fn set_post_boot_sound(&mut self, on: bool) {
         Self::set_boot_sound(on)
@@ -70,12 +71,12 @@ impl CtrlRogBios {
                 err
             })
             .ok();
-        self.notify_post_boot_sound(on)
-            .map_err(|err| {
-                warn!("CtrlRogBios: notify_post_boot_sound {}", err);
-                err
-            })
-            .ok();
+        // TODO: self.notify_post_boot_sound(on)
+        //     .map_err(|err| {
+        //         warn!("CtrlRogBios: notify_post_boot_sound {}", err);
+        //         err
+        //     })
+        //     .ok();
     }
 
     pub fn post_boot_sound(&self) -> i8 {
@@ -88,12 +89,12 @@ impl CtrlRogBios {
     }
 
     #[dbus_interface(signal)]
-    pub fn notify_post_boot_sound(&self, dedicated: bool) -> zbus::Result<()> {}
+    async fn notify_post_boot_sound(signal_ctxt: &SignalContext<'_>, dedicated: bool) -> zbus::Result<()> {}
 }
 
 impl crate::ZbusAdd for CtrlRogBios {
-    fn add_to_server(self, server: &mut zbus::ObjectServer) {
-        server
+    fn add_to_server(self, server: &mut Connection) {
+        server.object_server()
             .at(
                 &ObjectPath::from_str_unchecked("/org/asuslinux/RogBios"),
                 self,

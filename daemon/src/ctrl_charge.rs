@@ -1,14 +1,15 @@
 use crate::{config::Config, error::RogError, GetSupported};
-//use crate::dbus::DbusEvents;
 use log::{info, warn};
 use rog_supported::ChargeSupportedFunctions;
+use zbus::SignalContext;
+use zbus::blocking::Connection;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::Mutex;
 use zbus::dbus_interface;
-use zvariant::ObjectPath;
+use zvariant::{ObjectPath};
 
 static BAT_CHARGE_PATH0: &str = "/sys/class/power_supply/BAT0/charge_control_end_threshold";
 static BAT_CHARGE_PATH1: &str = "/sys/class/power_supply/BAT1/charge_control_end_threshold";
@@ -30,18 +31,12 @@ pub struct CtrlCharge {
 
 #[dbus_interface(name = "org.asuslinux.Daemon")]
 impl CtrlCharge {
-    pub fn set_limit(&mut self, limit: u8) -> Result<(), RogError> {
+    fn set_limit(&mut self, limit: u8) -> zbus::fdo::Result<()> {
         if !(20..=100).contains(&limit) {
-            return Err(RogError::ChargeLimit(limit));
+            return Err(RogError::ChargeLimit(limit))?;
         }
         if let Ok(mut config) = self.config.try_lock() {
             self.set(limit, &mut config)
-                .map_err(|err| {
-                    warn!("CtrlCharge: set_limit {}", err);
-                    err
-                })
-                .ok();
-            self.notify_charge(limit)
                 .map_err(|err| {
                     warn!("CtrlCharge: set_limit {}", err);
                     err
@@ -51,7 +46,7 @@ impl CtrlCharge {
         Ok(())
     }
 
-    pub fn limit(&self) -> i8 {
+    fn limit(&self) -> i8 {
         if let Ok(config) = self.config.try_lock() {
             return config.bat_charge_limit as i8;
         }
@@ -59,12 +54,13 @@ impl CtrlCharge {
     }
 
     #[dbus_interface(signal)]
-    pub fn notify_charge(&self, limit: u8) -> zbus::Result<()> {}
+    async fn notify_charge(ctxt: &SignalContext<'_>, limit: u8) -> zbus::Result<()> {}
 }
 
 impl crate::ZbusAdd for CtrlCharge {
-    fn add_to_server(self, server: &mut zbus::ObjectServer) {
+    fn add_to_server(self, server: &mut Connection) {
         server
+        .object_server()
             .at(
                 &ObjectPath::from_str_unchecked("/org/asuslinux/Charge"),
                 self,

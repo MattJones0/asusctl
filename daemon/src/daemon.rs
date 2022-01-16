@@ -6,7 +6,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::{env, thread};
 
-use ::zbus::{fdo, Connection, ObjectServer};
+use ::zbus::{blocking::Connection};
 use log::LevelFilter;
 use log::{error, info, warn};
 
@@ -75,14 +75,12 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
     println!("{}", serde_json::to_string_pretty(&supported)?);
 
     // Start zbus server
-    let connection = Connection::new_system()?;
-    let fdo_connection = fdo::DBusProxy::new(&connection)?;
-    let mut object_server = ObjectServer::new(&connection);
+    let mut connection = Connection::system()?;
 
     let config = Config::load();
     let config = Arc::new(Mutex::new(config));
 
-    supported.add_to_server(&mut object_server);
+    supported.add_to_server(&mut connection);
 
     match CtrlRogBios::new(config.clone()) {
         Ok(mut ctrl) => {
@@ -90,7 +88,7 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
             ctrl.reload()
                 .unwrap_or_else(|err| warn!("Battery charge limit: {}", err));
             // Then register to dbus server
-            ctrl.add_to_server(&mut object_server);
+            ctrl.add_to_server(&mut connection);
         }
         Err(err) => {
             error!("rog_bios_control: {}", err);
@@ -103,7 +101,7 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
             ctrl.reload()
                 .unwrap_or_else(|err| warn!("Battery charge limit: {}", err));
             // Then register to dbus server
-            ctrl.add_to_server(&mut object_server);
+            ctrl.add_to_server(&mut connection);
         }
         Err(err) => {
             error!("charge_control: {}", err);
@@ -118,7 +116,7 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
                     .unwrap_or_else(|err| warn!("Profile control: {}", err));
 
                 let tmp = Arc::new(Mutex::new(ctrl));
-                ProfileZbus::new(tmp.clone()).add_to_server(&mut object_server);
+                ProfileZbus::new(tmp.clone()).add_to_server(&mut connection);
 
                 let task = CtrlProfileTask::new(tmp);
                 thread::Builder::new().name("profile tasks".into()).spawn(
@@ -148,7 +146,7 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
                 .unwrap_or_else(|err| warn!("AniMe: {}", err));
 
             let zbus = CtrlAnimeZbus(inner.clone());
-            zbus.add_to_server(&mut object_server);
+            zbus.add_to_server(&mut connection);
 
             let task = CtrlAnimeTask::new(inner);
             thread::Builder::new().name("anime tasks".into()).spawn(
@@ -175,7 +173,7 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
                 .reload()
                 .unwrap_or_else(|err| warn!("Keyboard LED control: {}", err));
 
-            CtrlKbdLedZbus::new(inner.clone()).add_to_server(&mut object_server);
+            CtrlKbdLedZbus::new(inner.clone()).add_to_server(&mut connection);
 
             let task = CtrlKbdLedTask::new(inner);
             thread::Builder::new().name("keyboard tasks".into()).spawn(
@@ -192,12 +190,10 @@ fn start_daemon() -> Result<(), Box<dyn Error>> {
     }
 
     // Request dbus name after finishing initalizing all functions
-    fdo_connection.request_name(DBUS_NAME, fdo::RequestNameFlags::ReplaceExisting.into())?;
+    connection.request_name(DBUS_NAME)?;
 
     // Loop to check errors and iterate zbus server
     loop {
-        if let Err(err) = object_server.try_handle_next() {
-            error!("{}", err);
-        }
+        std::thread::sleep(Duration::from_millis(100));
     }
 }

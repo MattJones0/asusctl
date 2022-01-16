@@ -19,13 +19,12 @@
 //!
 //! …consequently `zbus-xmlgen` did not generate code for the above interfaces.
 
-use std::sync::mpsc::Sender;
-
 use rog_profiles::{
     fan_curve_set::{CurveData, FanCurveSet},
     Profile,
 };
-use zbus::{dbus_proxy, Connection, Result};
+use zbus_macros::dbus_proxy;
+use zbus::{blocking::Connection, Result};
 
 #[dbus_proxy(
     interface = "org.asuslinux.Daemon",
@@ -69,16 +68,16 @@ trait Daemon {
     fn notify_profile(&self, profile: Profile) -> zbus::Result<()>;
 }
 
-pub struct ProfileProxy<'a>(DaemonProxy<'a>);
+pub struct ProfileProxy<'a>(DaemonProxyBlocking<'a>);
 
 impl<'a> ProfileProxy<'a> {
     #[inline]
     pub fn new(conn: &Connection) -> Result<Self> {
-        Ok(ProfileProxy(DaemonProxy::new(conn)?))
+        Ok(ProfileProxy(DaemonProxyBlocking::new(conn)?))
     }
 
     #[inline]
-    pub fn proxy(&self) -> &DaemonProxy<'a> {
+    pub fn proxy(&self) -> &DaemonProxyBlocking<'a> {
         &self.0
     }
 
@@ -127,12 +126,12 @@ impl<'a> ProfileProxy<'a> {
         self.0.set_active_curve_to_defaults()
     }
 
-    #[inline]
-    pub fn connect_notify_profile(&self, send: Sender<Profile>) -> zbus::fdo::Result<()> {
-        self.0.connect_notify_profile(move |data| {
-            send.send(data)
-                .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
-            Ok(())
-        })
-    }
+    // #[inline]
+    // pub fn connect_notify_profile(&self, send: Sender<Profile>) -> zbus::fdo::Result<()> {
+    //     self.0.connect_notify_profile(move |data| {
+    //         send.send(data)
+    //             .map_err(|err| zbus::fdo::Error::Failed(err.to_string()))?;
+    //         Ok(())
+    //     })
+    // }
 }

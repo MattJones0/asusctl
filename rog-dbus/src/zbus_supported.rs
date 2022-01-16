@@ -20,7 +20,8 @@
 //! …consequently `zbus-xmlgen` did not generate code for the above interfaces.
 
 use rog_supported::SupportedFunctions;
-use zbus::{dbus_proxy, Connection, Result};
+use zbus_macros::dbus_proxy;
+use zbus::{blocking::Connection, Result};
 
 #[dbus_proxy(
     interface = "org.asuslinux.Daemon",
@@ -31,16 +32,16 @@ trait Daemon {
     fn supported_functions(&self) -> zbus::Result<SupportedFunctions>;
 }
 
-pub struct SupportProxy<'a>(DaemonProxy<'a>);
+pub struct SupportProxy<'a>(DaemonProxyBlocking<'a>);
 
 impl<'a> SupportProxy<'a> {
     #[inline]
     pub fn new(conn: &Connection) -> Result<Self> {
-        Ok(SupportProxy(DaemonProxy::new(conn)?))
+        Ok(SupportProxy(DaemonProxyBlocking::new(conn)?))
     }
 
     #[inline]
-    pub fn proxy(&self) -> &DaemonProxy<'a> {
+    pub fn proxy(&self) -> &DaemonProxyBlocking<'a> {
         &self.0
     }
 

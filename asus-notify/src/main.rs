@@ -1,6 +1,6 @@
 use notify_rust::{Hint, Notification, NotificationHandle};
 use rog_aura::AuraEffect;
-use rog_dbus::{DbusProxies, Signals};
+use rog_dbus::{DbusProxies};
 use rog_profiles::Profile;
 use std::error::Error;
 use std::thread::sleep;
@@ -34,38 +34,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   rog-dbus version {}", rog_dbus::VERSION);
 
     let (proxies, conn) = DbusProxies::new()?;
-    let signals = Signals::new(&proxies)?;
+    // let signals = Signals::new(&proxies)?;
 
     let mut last_notification: Option<NotificationHandle> = None;
 
-    let recv = proxies.setup_recv(conn);
+    // let recv = proxies.setup_recv(conn);
     let mut err_count = 0;
 
     loop {
         sleep(Duration::from_millis(100));
-        if let Err(err) = recv.next_signal() {
-            if err_count < 3 {
-                err_count += 1;
-                println!("{}", err);
-            }
-            if err_count == 3 {
-                err_count += 1;
-                println!("Max error count reached. Spooling silently.");
-            }
-            sleep(Duration::from_millis(2000));
-            continue;
-        }
-        err_count = 0;
+        // if let Err(err) = recv.next_signal() {
+        //     if err_count < 3 {
+        //         err_count += 1;
+        //         println!("{}", err);
+        //     }
+        //     if err_count == 3 {
+        //         err_count += 1;
+        //         println!("Max error count reached. Spooling silently.");
+        //     }
+        //     sleep(Duration::from_millis(2000));
+        //     continue;
+        // }
+        // err_count = 0;
 
-        if let Ok(data) = signals.led_mode.try_recv() {
-            notify!(do_led_notif, last_notification, &data);
-        }
-        if let Ok(data) = signals.profile.try_recv() {
-            notify!(do_thermal_notif, last_notification, &data);
-        }
-        if let Ok(data) = signals.charge.try_recv() {
-            notify!(do_charge_notif, last_notification, &data);
-        }
+        // if let Ok(data) = signals.led_mode.try_recv() {
+        //     notify!(do_led_notif, last_notification, &data);
+        // }
+        // if let Ok(data) = signals.profile.try_recv() {
+        //     notify!(do_thermal_notif, last_notification, &data);
+        // }
+        // if let Ok(data) = signals.charge.try_recv() {
+        //     notify!(do_charge_notif, last_notification, &data);
+        // }
     }
 }
 
